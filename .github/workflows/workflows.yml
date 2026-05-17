@@ -61,18 +61,17 @@ jobs:
           libavdevice-dev
 
     # ========== 重构的 vcpkg 安装步骤 ==========
-    - name: Setup vcpkg (2026-03-04)
+    - name: Setup vcpkg (latest)
       run: |
         VCPKG_ROOT="${{ runner.workspace }}/vcpkg"
         echo "VCPKG_ROOT=${VCPKG_ROOT}" >> $GITHUB_ENV
         echo "${VCPKG_ROOT}" >> $GITHUB_PATH
 
-        # 使用Git直接克隆指定的标签
-        git clone --depth 1 --branch 2026-03-04 https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
+        # 克隆 vcpkg 仓库（默认最新 master）
+        git clone --depth 1 https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
 
-        # 下载预编译的vcpkg二进制文件
-        wget -O "${VCPKG_ROOT}/vcpkg" https://github.com/microsoft/vcpkg-tool/releases/download/2026-03-04/vcpkg-glibc
-        chmod +x "${VCPKG_ROOT}/vcpkg"
+        # 运行 bootstrap 脚本编译 vcpkg 工具
+        "${VCPKG_ROOT}/bootstrap-vcpkg.sh"
 
         # 验证安装
         vcpkg --version
