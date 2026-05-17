@@ -50,8 +50,9 @@ jobs:
           libxcursor-dev \
           libxinerama-dev \
           libwayland-dev \
-          libwayland-egl-backend-dev \
+          libwayland-egl-backend-dev 
           # FFmpeg 开发库（直接用系统库，避免 vcpkg 编译时间过长）
+        sudo apt install -y \
           libavcodec-dev \
           libavformat-dev \
           libavutil-dev \
