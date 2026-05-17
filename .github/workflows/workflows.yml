@@ -61,12 +61,12 @@ jobs:
           libavfilter-dev \
           libavdevice-dev
 
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      id: vcpkg
-      with:
-        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
-        vcpkgGitCommitId: '4b3e4c276b5b87a649e66341e11553e8c577459c'
+    - name: Install vcpkg 2026-03-04
+      run: |
+        wget -O vcpkg https://github.com/microsoft/vcpkg/releases/download/2026-03-04/vcpkg-glibc
+        chmod +x vcpkg
+        sudo mv vcpkg /usr/local/bin/
+        vcpkg --version
 
     - name: Install Qt6 and other dependencies via vcpkg
       run: |
