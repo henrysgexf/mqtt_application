@@ -66,7 +66,7 @@ jobs:
       id: vcpkg
       with:
         vcpkgDirectory: '${{ github.workspace }}/vcpkg'
-        vcpkgGitCommitId: '2024.03.25'
+        vcpkgGitCommitId: '4b3e4c276b5b87a649e66341e11553e8c577459c'
 
     - name: Install Qt6 and other dependencies via vcpkg
       run: |
