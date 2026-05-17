@@ -78,9 +78,15 @@ jobs:
 
     - name: Install Qt6 and other dependencies via vcpkg
       run: |
+        # 1. 更新vcpkg的包索引，确保能识别最新的包
+        vcpkg update
+        
+        # 2. 安装项目所需的所有依赖，使用 '--classic' 模式
         vcpkg install --classic \
-          qt6 qt6-mqtt \
-          protobuf abseil \
+          qtbase \
+          qt-mqtt \
+          protobuf \
+          abseil \
           --triplet x64-linux
       shell: bash
 
