@@ -81,7 +81,7 @@ jobs:
           "version": "0.1.0",
           "dependencies": [
             "qtbase",
-            "qt-mqtt",
+            "qtmqtt",
             "protobuf",
             "abseil"
           ]
