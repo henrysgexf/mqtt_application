@@ -59,7 +59,11 @@ jobs:
           libswscale-dev \
           libswresample-dev \
           libavfilter-dev \
-          libavdevice-dev
+          libavdevice-dev \
+          autoconf \
+          autoconf-archive \
+          automake \
+          libtool
 
     # ---------- 安装 vcpkg（最新版） ----------
     - name: Setup vcpkg (latest)
