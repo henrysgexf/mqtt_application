@@ -41,6 +41,7 @@ jobs:
           libxcb-sync-dev \
           libxcb-xkb-dev \
           libxcb-dri3-dev \
+          libxcb-xinput-dev \
           libx11-xcb-dev \
           libxkbcommon-dev \
           libxkbcommon-x11-dev \
@@ -60,6 +61,8 @@ jobs:
           libswresample-dev \
           libavfilter-dev \
           libavdevice-dev \
+          libdbus-1-dev \
+          libatspi2.0-dev \
           autoconf \
           autoconf-archive \
           automake \
