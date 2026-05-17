@@ -63,19 +63,20 @@ jobs:
     # ========== 重构的 vcpkg 安装步骤 ==========
     - name: Setup vcpkg (2026-03-04)
       run: |
-        # 设置 vcpkg 根目录（使用 runner 的工作区）
         VCPKG_ROOT="${{ runner.workspace }}/vcpkg"
         echo "VCPKG_ROOT=${VCPKG_ROOT}" >> $GITHUB_ENV
         echo "${VCPKG_ROOT}" >> $GITHUB_PATH
 
-        # 克隆 vcpkg 仓库（仅最新版本，不拉取完整历史，加速下载）
-        git clone --depth 1 --branch 2026-03-04 https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
+        # 1. 下载 vcpkg 源码包（对应 tag 2026-03-04）
+        wget -O vcpkg-src.tar.gz https://github.com/microsoft/vcpkg/archive/refs/tags/2026-03-04.tar.gz
+        mkdir -p "${VCPKG_ROOT}"
+        tar -xzf vcpkg-src.tar.gz -C "${VCPKG_ROOT}" --strip-components=1
 
-        # 下载预编译的 vcpkg 二进制（来自 vcpkg-tool 仓库的正确文件）
+        # 2. 下载预编译的 vcpkg 二进制（来自 vcpkg-tool 仓库）
         wget -O "${VCPKG_ROOT}/vcpkg" https://github.com/microsoft/vcpkg-tool/releases/download/2026-03-04/vcpkg-glibc
         chmod +x "${VCPKG_ROOT}/vcpkg"
 
-        # 验证安装
+        # 3. 验证安装
         vcpkg --version
 
     - name: Install Qt6 and other dependencies via vcpkg
