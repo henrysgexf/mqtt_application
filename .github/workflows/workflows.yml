@@ -78,10 +78,11 @@ jobs:
 
     - name: Install Qt6 and other dependencies via vcpkg
       run: |
-        vcpkg install \
+        vcpkg install --classic \
           qt6-base qt6-mqtt \
           protobuf abseil \
           --triplet x64-linux
+      shell: bash
 
     - name: Configure CMake
       run: |
