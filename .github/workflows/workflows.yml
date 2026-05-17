@@ -9,7 +9,6 @@ on:
 
 env:
   BUILD_TYPE: Release
-  VCPKG_ROOT: ${{ runner.workspace }}/vcpkg
 
 jobs:
   build-linux:
@@ -65,20 +64,15 @@ jobs:
     # ---------- 安装 vcpkg（最新版） ----------
     - name: Setup vcpkg (latest)
       run: |
-        # 设置环境变量（持久化）
+        VCPKG_ROOT="${{ runner.workspace }}/vcpkg"
         echo "VCPKG_ROOT=${VCPKG_ROOT}" >> $GITHUB_ENV
         echo "${VCPKG_ROOT}" >> $GITHUB_PATH
 
-        # 克隆 vcpkg 仓库（浅克隆，只取最新）
         git clone --depth 1 https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
-
-        # 编译 vcpkg 工具
         "${VCPKG_ROOT}/bootstrap-vcpkg.sh"
-
-        # 验证安装
         vcpkg --version
 
-    # ---------- 创建 vcpkg.json 声明依赖（manifest 模式） ----------
+    # ---------- 创建 vcpkg.json ----------
     - name: Create vcpkg.json
       run: |
         cat > vcpkg.json << 'EOF'
@@ -96,7 +90,7 @@ jobs:
         echo "vcpkg.json created:"
         cat vcpkg.json
 
-    # ---------- 安装依赖（manifest 模式，自动读取 vcpkg.json） ----------
+    # ---------- 安装依赖（manifest 模式） ----------
     - name: Install dependencies via vcpkg (with retry)
       run: |
         function retry {
