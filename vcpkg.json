@@ -1,9 +1,9 @@
 {
   "name": "mqtt-application",
-  "version": "0.1",
+  "version": "0.1.0",
   "dependencies": [
-    "qt6-base",
-    "qt6-mqtt",
+    "qtbase",
+    "qt-mqtt",
     "protobuf",
     "abseil"
   ]

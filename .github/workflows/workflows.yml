@@ -9,6 +9,7 @@ on:
 
 env:
   BUILD_TYPE: Release
+  VCPKG_ROOT: ${{ runner.workspace }}/vcpkg
 
 jobs:
   build-linux:
@@ -19,6 +20,7 @@ jobs:
       with:
         submodules: recursive
 
+    # ---------- 系统依赖 ----------
     - name: Install system dependencies
       run: |
         sudo apt update
@@ -60,61 +62,89 @@ jobs:
           libavfilter-dev \
           libavdevice-dev
 
-    # ========== 重构的 vcpkg 安装步骤 ==========
+    # ---------- 安装 vcpkg（最新版） ----------
     - name: Setup vcpkg (latest)
       run: |
-        VCPKG_ROOT="${{ runner.workspace }}/vcpkg"
+        # 设置环境变量（持久化）
         echo "VCPKG_ROOT=${VCPKG_ROOT}" >> $GITHUB_ENV
         echo "${VCPKG_ROOT}" >> $GITHUB_PATH
 
-        # 克隆 vcpkg 仓库（默认最新 master）
+        # 克隆 vcpkg 仓库（浅克隆，只取最新）
         git clone --depth 1 https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
 
-        # 运行 bootstrap 脚本编译 vcpkg 工具
+        # 编译 vcpkg 工具
         "${VCPKG_ROOT}/bootstrap-vcpkg.sh"
 
         # 验证安装
         vcpkg --version
 
-    - name: Install Qt6 and other dependencies via vcpkg
+    # ---------- 创建 vcpkg.json 声明依赖（manifest 模式） ----------
+    - name: Create vcpkg.json
       run: |
-        # 1. 更新vcpkg的包索引，确保能识别最新的包
-        vcpkg update
-        
-        # 2. 安装项目所需的所有依赖，使用 '--classic' 模式
-        vcpkg install --classic \
-          qtbase \
-          qt-mqtt \
-          protobuf \
-          abseil \
-          --triplet x64-linux
-      shell: bash
+        cat > vcpkg.json << 'EOF'
+        {
+          "name": "mqtt-application",
+          "version": "0.1.0",
+          "dependencies": [
+            "qtbase",
+            "qt-mqtt",
+            "protobuf",
+            "abseil"
+          ]
+        }
+        EOF
+        echo "vcpkg.json created:"
+        cat vcpkg.json
 
+    # ---------- 安装依赖（manifest 模式，自动读取 vcpkg.json） ----------
+    - name: Install dependencies via vcpkg (with retry)
+      run: |
+        function retry {
+          local n=1
+          local max=3
+          local delay=10
+          while true; do
+            "$@" && break || {
+              if [[ $n -lt $max ]]; then
+                ((n++))
+                echo "Command failed. Attempt $n/$max:"
+                sleep $delay;
+              else
+                echo "The command has failed after $n attempts."
+                return 1
+              fi
+            }
+          done
+        }
+        retry vcpkg install --triplet x64-linux
+
+    # ---------- 配置 CMake ----------
     - name: Configure CMake
       run: |
         cmake -B ${{ github.workspace }}/build \
           -G Ninja \
           -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-          -DCMAKE_TOOLCHAIN_FILE=${{ runner.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake \
+          -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
       env:
         VCPKG_DEFAULT_TRIPLET: x64-linux
 
+    # ---------- 构建 ----------
     - name: Build
       run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
 
+    # ---------- 打包运行文件 ----------
     - name: Prepare runtime directory
       run: |
         mkdir -p package/usr/bin
         cp ${{ github.workspace }}/build/Application package/usr/bin/
-        cp ${{ github.workspace }}/style.qss package/usr/bin/
+        cp ${{ github.workspace }}/style.qss package/usr/bin/ || true
 
     - name: Copy system libraries (simple approach)
       run: |
         mkdir -p package/usr/lib
         ldd package/usr/bin/Application | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -v '{}' package/usr/lib/ || true
-        # 添加 Qt 插件路径（可选）
-        QT_PLUGIN_PATH="${{ runner.workspace }}/vcpkg/installed/x64-linux/bin/plugins"
+        QT_PLUGIN_PATH="${VCPKG_ROOT}/installed/x64-linux/bin/plugins"
         if [ -d "$QT_PLUGIN_PATH" ]; then
           cp -r "$QT_PLUGIN_PATH" package/usr/bin/plugins
         fi
