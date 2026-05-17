@@ -51,7 +51,6 @@ jobs:
           libxinerama-dev \
           libwayland-dev \
           libwayland-egl-backend-dev \
-          libwayland-cursor++1 \
           # FFmpeg 开发库（直接用系统库，避免 vcpkg 编译时间过长）
           libavcodec-dev \
           libavformat-dev \
