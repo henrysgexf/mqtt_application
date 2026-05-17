@@ -1,0 +1,126 @@
+name: CI for Linux
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          pkg-config \
+          libgl1-mesa-dev \
+          libxkbcommon-x11-dev \
+          libxcb-randr0-dev \
+          libxcb-util-dev \
+          libxcb-keysyms1-dev \
+          libxcb-cursor-dev \
+          libxcb-xinerama0-dev \
+          libxcb-icccm4-dev \
+          libxcb-shape0-dev \
+          libxcb-xfixes0-dev \
+          libxcb-sync-dev \
+          libxcb-xkb-dev \
+          libxcb-dri3-dev \
+          libx11-xcb-dev \
+          libxkbcommon-dev \
+          libxkbcommon-x11-dev \
+          libxrender-dev \
+          libxi-dev \
+          libxrandr-dev \
+          libxfixes-dev \
+          libxcursor-dev \
+          libxinerama-dev \
+          libwayland-dev \
+          libwayland-egl-backend-dev \
+          libwayland-cursor++-dev \
+          # FFmpeg 开发库（直接用系统库，避免 vcpkg 编译时间过长）
+          libavcodec-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libswscale-dev \
+          libswresample-dev \
+          libavfilter-dev \
+          libavdevice-dev
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      id: vcpkg
+      with:
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+        vcpkgGitCommitId: '2024.03.25'
+
+    - name: Install Qt6 and other dependencies via vcpkg
+      run: |
+        ${{ steps.vcpkg.outputs.vcpkgExecutable }} install \
+          qt6-base qt6-mqtt \
+          protobuf abseil \
+          --triplet x64-linux
+      shell: bash
+
+    - name: Configure CMake
+      run: |
+        cmake -B ${{ github.workspace }}/build \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+          -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      env:
+        VCPKG_DEFAULT_TRIPLET: x64-linux
+
+    - name: Build
+      run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+
+    - name: Prepare runtime directory
+      run: |
+        mkdir -p package/usr/bin
+        cp ${{ github.workspace }}/build/Application package/usr/bin/
+        cp ${{ github.workspace }}/style.qss package/usr/bin/
+
+    - name: Copy system libraries (simple approach)
+      run: |
+        # 复制程序依赖的 so 文件到 lib 目录
+        mkdir -p package/usr/lib
+        ldd package/usr/bin/Application | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -v '{}' package/usr/lib/ || true
+        # 添加 Qt 插件路径（可选）
+        QT_PLUGIN_PATH=${{ github.workspace }}/vcpkg/installed/x64-linux/bin/plugins
+        if [ -d "$QT_PLUGIN_PATH" ]; then
+          cp -r $QT_PLUGIN_PATH package/usr/bin/plugins
+        fi
+
+    - name: Create run script
+      run: |
+        cat > package/run.sh << 'EOF'
+        #!/bin/bash
+        DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+        export LD_LIBRARY_PATH="$DIR/usr/lib:$LD_LIBRARY_PATH"
+        exec "$DIR/usr/bin/Application" "$@"
+        EOF
+        chmod +x package/run.sh
+
+    - name: Package into tar.gz
+      run: tar -czf Application-linux-x86_64.tar.gz -C package .
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Application-Linux
+        path: Application-linux-x86_64.tar.gz
