@@ -17,7 +17,11 @@ find_package(Protobuf REQUIRED)
 find_package(absl CONFIG REQUIRED)
 
 # 获取 protoc 路径（用于生成 .pb 文件）
-get_target_property(Protobuf_PROTOC_EXECUTABLE protobuf::protoc IMPORTED_LOCATION)
+# 方法1：使用 find_package 设置的变量（推荐）
+if(NOT Protobuf_PROTOC_EXECUTABLE)
+    # 方法2：直接在 PATH 中查找 protoc 可执行文件
+    find_program(Protobuf_PROTOC_EXECUTABLE protoc REQUIRED)
+endif()
 message(STATUS "Using protoc: ${Protobuf_PROTOC_EXECUTABLE}")
 
 # ====== 项目源文件 ======
