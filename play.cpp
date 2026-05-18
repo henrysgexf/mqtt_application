@@ -89,14 +89,14 @@ Play::Play(QMqttClient *client, QWidget *parent)
     decodeThread = QThread::create([this] { decodeLoop(); });
     decodeThread->start();
 
-    // 打开鼠标日志文件
-    mouseLogFile.setFileName("mouse_log.txt");
-    if (mouseLogFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-        mouseLogStream.setDevice(&mouseLogFile);
-        mouseLogStream << "timestamp,delta_x,delta_y,target_speed_x,target_speed_y,current_speed_x,current_speed_y\n";
-    } else {
-        qWarning() << "无法打开鼠标日志文件：" << mouseLogFile.errorString();
-    }
+    // // 打开鼠标日志文件
+    // mouseLogFile.setFileName("mouse_log.txt");
+    // if (mouseLogFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+    //     mouseLogStream.setDevice(&mouseLogFile);
+    //     mouseLogStream << "timestamp,delta_x,delta_y,target_speed_x,target_speed_y,current_speed_x,current_speed_y\n";
+    // } else {
+    //     qWarning() << "无法打开鼠标日志文件：" << mouseLogFile.errorString();
+    // }
 }
 
 Play::~Play()
@@ -198,6 +198,8 @@ void Play::onMqttMessageReceived(const QMqttMessage &msg)
         emit globalMechanismReceived(payload);
     else if (topic == "GlobalLogisticsStatus")
         emit logisticsReceived(payload);
+    else if (topic == "CustomByteBlock")
+        processCustomByteBlock(payload);
 }
 
 void Play::lockMouse()
@@ -236,6 +238,10 @@ void Play::keyPressEvent(QKeyEvent *event)
         } else {
             showFullScreen();
         }
+        return;
+    }
+    if (event->key() == Qt::Key_F12) {   // 切换图传源
+        toggleVideoSource();
         return;
     }
     int bit = keyToBit(event->key());
@@ -393,6 +399,12 @@ int Play::keyToBit(int key)
 
 void Play::processVideoData()
 {
+    if (activeVideoSource != SOURCE_OFFICIAL) {
+        // 非激活状态，直接丢弃所有 UDP 包
+        while (videoSocket->hasPendingDatagrams())
+            videoSocket->readDatagram(nullptr, 0);
+        return;
+    }
     while (videoSocket->hasPendingDatagrams()) {
         QByteArray datagram;
         datagram.resize(videoSocket->pendingDatagramSize());
@@ -656,4 +668,177 @@ void Play::onRobotRealtimeReceived(const QByteArray &payload)
     ui->robotHealthLabel->setText(QString("血量: %1 / ?").arg(status.current_health()));
     ui->robotHeatLabel->setText(QString("热量: %1").arg(status.current_heat()));
     ui->robotRemainingAmmoLabel->setText(QString("剩余弹量: %1").arg(status.remaining_ammo()));
+}
+
+void Play::processCustomByteBlock(const QByteArray &payload)
+{
+    // 只有当前激活的是自定义图传才解码
+    if (activeVideoSource != SOURCE_CUSTOM)
+        return;
+
+    // 1. 解析 Protobuf
+    robomaster::CustomByteBlock block;
+    if (!block.ParseFromArray(payload.constData(), payload.size())) {
+        qDebug() << "Failed to parse CustomByteBlock";
+        return;
+    }
+    QByteArray data = QByteArray::fromStdString(block.data());
+    if (data.size() != 150) {   // 期望 150 字节
+        qDebug() << "CustomByteBlock data size wrong:" << data.size();
+        return;
+    }
+
+    // 2. 提取序列号（前2字节，大端）与 H.264 分片（后148字节）
+    uint16_t seq = (static_cast<uint8_t>(data[0]) << 8) | static_cast<uint8_t>(data[1]);
+    QByteArray h264Chunk = data.mid(2);
+
+    // 3. 追加到流缓冲区
+    customStreamBuffer.append(h264Chunk);
+
+    // 4. 提取所有完整的 NAL 单元（H.264 Annex B 格式）
+    QList<QByteArray> nals;
+    int start = -1;
+    int i = 0;
+    while (i < customStreamBuffer.size() - 3) {
+        bool isStart = false;
+        int offset = 0;
+        if (static_cast<uint8_t>(customStreamBuffer[i]) == 0x00 &&
+            static_cast<uint8_t>(customStreamBuffer[i+1]) == 0x00 &&
+            static_cast<uint8_t>(customStreamBuffer[i+2]) == 0x01) {
+            isStart = true;
+            offset = 3;
+        } else if (i < customStreamBuffer.size() - 4 &&
+                   static_cast<uint8_t>(customStreamBuffer[i]) == 0x00 &&
+                   static_cast<uint8_t>(customStreamBuffer[i+1]) == 0x00 &&
+                   static_cast<uint8_t>(customStreamBuffer[i+2]) == 0x00 &&
+                   static_cast<uint8_t>(customStreamBuffer[i+3]) == 0x01) {
+            isStart = true;
+            offset = 4;
+        }
+
+        if (isStart) {
+            if (start != -1) {
+                nals.append(customStreamBuffer.mid(start, i - start));
+            }
+            start = i + offset;
+            i = start;
+        } else {
+            i++;
+        }
+    }
+    // 保留未完整的剩余数据
+    if (start != -1 && start < customStreamBuffer.size()) {
+        customStreamBuffer = customStreamBuffer.mid(start);
+    } else {
+        customStreamBuffer.clear();
+    }
+
+    // 5. 处理每个 NAL 单元
+    QByteArray outputFrame;
+    bool hasIDR = false;
+    for (const QByteArray &nal : nals) {
+        if (nal.size() < 5) continue;
+        int nalType = static_cast<uint8_t>(nal[4]) & 0x1F;  // H.264 NAL 类型
+        if (nalType == 7) {          // SPS
+            customSps = nal;
+        } else if (nalType == 8) {   // PPS
+            customPps = nal;
+        } else if (nalType == 5) {   // IDR 帧
+            hasIDR = true;
+        }
+        outputFrame.append(nal);
+    }
+
+    // 6. 如果是 IDR 帧且有参数集，则拼接 SPS+PPS 到前面
+    if (hasIDR && !customSps.isEmpty() && !customPps.isEmpty()) {
+        outputFrame = customSps + customPps + outputFrame;
+    }
+
+    // 7. 送入解码队列
+    if (!outputFrame.isEmpty()) {
+        QMutexLocker locker(&decodeMutex);
+        decodeQueue.enqueue(outputFrame);
+        decodeCond.wakeOne();
+    }
+}
+
+void Play::resetDecoder()
+{
+    // 清空解码队列
+    {
+        QMutexLocker locker(&decodeMutex);
+        decodeQueue.clear();
+    }
+    // 销毁原有解码器
+    if (codecCtx) {
+        avcodec_free_context(&codecCtx);
+    }
+    // 根据源选择解码器
+    const AVCodec *codec = nullptr;
+    if (activeVideoSource == SOURCE_OFFICIAL) {
+        codec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+        qDebug() << "Switch to HEVC decoder (official)";
+    } else {
+        codec = avcodec_find_decoder(AV_CODEC_ID_H264);
+        qDebug() << "Switch to H.264 decoder (custom)";
+    }
+    if (!codec) {
+        qDebug() << "Decoder not found";
+        return;
+    }
+    codecCtx = avcodec_alloc_context3(codec);
+    codecCtx->thread_count = 4;
+    codecCtx->thread_type = FF_THREAD_SLICE;
+    codecCtx->flags |= AV_CODEC_FLAG_LOW_DELAY;
+    codecCtx->flags2 |= AV_CODEC_FLAG2_FAST;
+    if (avcodec_open2(codecCtx, codec, nullptr) < 0) {
+        qDebug() << "Failed to open decoder";
+        avcodec_free_context(&codecCtx);
+        codecCtx = nullptr;
+    }
+    // 重置缩放上下文
+    if (swsCtx) {
+        sws_freeContext(swsCtx);
+        swsCtx = nullptr;
+    }
+    // 清空参数集
+    vps.clear(); sps.clear(); pps.clear();
+    customSps.clear(); customPps.clear();
+    customStreamBuffer.clear();
+    gotIDR = false;
+}
+
+void Play::toggleVideoSource()
+{
+    activeVideoSource = (activeVideoSource == SOURCE_OFFICIAL) ? SOURCE_CUSTOM : SOURCE_OFFICIAL;
+    resetDecoder();
+
+    // 清空各自的缓冲区
+    frameBuffers.clear();
+    customStreamBuffer.clear();
+    customSps.clear(); customPps.clear();
+    vps.clear(); sps.clear(); pps.clear();
+    gotIDR = false;
+
+    updateVideoSourceLabel();
+    qDebug() << "Switched to" << ((activeVideoSource == SOURCE_OFFICIAL) ? "Official" : "Custom");
+}
+
+void Play::updateVideoSourceLabel()
+{
+    if (ui->videoSourceLabel) {
+        if (activeVideoSource == SOURCE_OFFICIAL) {
+            ui->videoSourceLabel->setText("图传: 官方");
+            ui->videoSourceLabel->setStyleSheet("color: cyan; font-weight: bold;");
+        } else {
+            ui->videoSourceLabel->setText("图传: 自定义");
+            ui->videoSourceLabel->setStyleSheet("color: yellow; font-weight: bold;");
+        }
+    } else {
+        // 后备：修改窗口标题
+        QString title = (activeVideoSource == SOURCE_OFFICIAL) ?
+                            "RoboMaster Client - 官方图传" :
+                            "RoboMaster Client - 自定义图传";
+        setWindowTitle(title);
+    }
 }

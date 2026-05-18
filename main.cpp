@@ -11,17 +11,17 @@ int main(int argc, char *argv[])
 
 
 
-    QFile file("style.qss");
-
-    if(file.open(QFile::ReadOnly))
-    {
-        QString style = file.readAll();
-        a.setStyleSheet(style);
-        qDebug()<<"QSS loaded";
-    }
-    else
-    {
-        qDebug()<<"QSS load failed";
+    // 获取可执行文件所在目录
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString qssPath = appDir + "/style.qss";
+    
+    QFile file(qssPath);
+    if (file.open(QFile::ReadOnly)) {
+        QTextStream stream(&file);
+        app.setStyleSheet(stream.readAll());
+        file.close();
+    } else {
+        qWarning() << "Failed to load QSS from" << qssPath;
     }
 
     Widget w;

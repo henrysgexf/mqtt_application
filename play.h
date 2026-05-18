@@ -9,6 +9,7 @@
 #include <QImage>
 #include <QTimer>
 #include "videowidget.h"
+#include "radarwidget.h"
 #include "robomaster_protocol.pb.h"
 #include <QMqttMessage>
 #include <QLabel>
@@ -121,6 +122,24 @@ private:
     AVFrame *frame;
 
     QMap<uint16_t, FrameBuffer> frameBuffers;
+
+    // 自定义图传源切换
+    enum VideoSource { SOURCE_OFFICIAL = 0, SOURCE_CUSTOM = 1 };
+    VideoSource activeVideoSource = SOURCE_OFFICIAL;
+
+    // 自定义图传缓冲区
+    QByteArray customStreamBuffer;
+    QByteArray customSps, customPps;
+
+    // 切换函数
+    void toggleVideoSource();
+    void updateVideoSourceLabel();
+
+    // 处理 CustomByteBlock 消息
+    void processCustomByteBlock(const QByteArray &payload);
+
+    // 重置解码器（切换时调用）
+    void resetDecoder();
 
     // 键鼠状态
     uint32_t keyboardMask;

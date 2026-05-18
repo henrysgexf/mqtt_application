@@ -19,67 +19,33 @@ jobs:
       with:
         submodules: recursive
 
-    # ---------- 系统依赖 ----------
     - name: Install system dependencies
       run: |
         sudo apt update
         sudo apt install -y \
-          build-essential \
-          cmake \
-          ninja-build \
-          pkg-config \
-          libgl1-mesa-dev \
-          libxkbcommon-x11-dev \
-          libxcb-randr0-dev \
-          libxcb-util-dev \
-          libxcb-keysyms1-dev \
-          libxcb-cursor-dev \
-          libxcb-xinerama0-dev \
-          libxcb-icccm4-dev \
-          libxcb-shape0-dev \
-          libxcb-xfixes0-dev \
-          libxcb-sync-dev \
-          libxcb-xkb-dev \
-          libxcb-dri3-dev \
-          libxcb-xinput-dev \
-          libx11-xcb-dev \
-          libxkbcommon-dev \
-          libxkbcommon-x11-dev \
-          libxrender-dev \
-          libxi-dev \
-          libxrandr-dev \
-          libxfixes-dev \
-          libxcursor-dev \
-          libxinerama-dev \
-          libwayland-dev \
-          libwayland-egl-backend-dev
-        sudo apt install -y \
-          libavcodec-dev \
-          libavformat-dev \
-          libavutil-dev \
-          libswscale-dev \
-          libswresample-dev \
-          libavfilter-dev \
-          libavdevice-dev \
-          libdbus-1-dev \
-          libatspi2.0-dev \
-          autoconf \
-          autoconf-archive \
-          automake \
-          libtool
+          build-essential cmake ninja-build pkg-config \
+          libgl1-mesa-dev libxkbcommon-x11-dev libxcb-randr0-dev \
+          libxcb-util-dev libxcb-keysyms1-dev libxcb-cursor-dev \
+          libxcb-xinerama0-dev libxcb-icccm4-dev libxcb-shape0-dev \
+          libxcb-xfixes0-dev libxcb-sync-dev libxcb-xkb-dev \
+          libxcb-dri3-dev libxcb-xinput-dev libx11-xcb-dev \
+          libxkbcommon-dev libxkbcommon-x11-dev libxrender-dev \
+          libxi-dev libxrandr-dev libxfixes-dev libxcursor-dev \
+          libxinerama-dev libwayland-dev libwayland-egl-backend-dev \
+          libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
+          libswresample-dev libavfilter-dev libavdevice-dev \
+          libdbus-1-dev libatspi2.0-dev autoconf autoconf-archive \
+          automake libtool wget file
 
-    # ---------- 安装 vcpkg（最新版） ----------
-    - name: Setup vcpkg (latest)
+    - name: Setup vcpkg
       run: |
         VCPKG_ROOT="${{ runner.workspace }}/vcpkg"
         echo "VCPKG_ROOT=${VCPKG_ROOT}" >> $GITHUB_ENV
         echo "${VCPKG_ROOT}" >> $GITHUB_PATH
-
         git clone --depth 1 https://github.com/microsoft/vcpkg.git "${VCPKG_ROOT}"
         "${VCPKG_ROOT}/bootstrap-vcpkg.sh"
         vcpkg --version
 
-    # ---------- 创建 vcpkg.json ----------
     - name: Create vcpkg.json
       run: |
         cat > vcpkg.json << 'EOF'
@@ -94,10 +60,6 @@ jobs:
           ]
         }
         EOF
-        echo "vcpkg.json created:"
-        cat vcpkg.json
-    
-
 
     - name: Cache vcpkg packages
       uses: actions/cache@v4
@@ -106,84 +68,74 @@ jobs:
         path: |
           ${{ runner.workspace }}/vcpkg/downloads
           ${{ runner.workspace }}/vcpkg/installed
-          ${{ runner.workspace }}/vcpkg/buildtrees   # 可选，但可能很大
+          ${{ runner.workspace }}/vcpkg/buildtrees
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-
-    # ---------- 安装依赖（manifest 模式） ----------
-    - name: Install dependencies via vcpkg (with retry)
+
+    - name: Install dependencies via vcpkg
       run: |
         function retry {
-          local n=1
-          local max=3
-          local delay=10
+          local n=1 max=3 delay=10
           while true; do
             "$@" && break || {
-              if [[ $n -lt $max ]]; then
-                ((n++))
-                echo "Command failed. Attempt $n/$max:"
-                sleep $delay;
-              else
-                echo "The command has failed after $n attempts."
-                return 1
-              fi
+              if [[ $n -lt $max ]]; then ((n++)); echo "Retry $n/$max"; sleep $delay; else return 1; fi
             }
           done
         }
-        retry vcpkg install --triplet x64-linux
-
-
+        retry vcpkg install --triplet x64-linux --recurse
+      env:
+        VCPKG_DEFAULT_TRIPLET: x64-linux
 
     - name: Cache CMake build
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/build
-        key: ${{ runner.os }}-cmake-${{ hashFiles('CMakeLists.txt', '**/*.cpp', '**/*.h') }}
+        key: ${{ runner.os }}-cmake-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-cmake-
-    # ---------- 配置 CMake ----------
+
     - name: Configure CMake
       run: |
-        cmake -B ${{ github.workspace }}/build \
-          -G Ninja \
+        cmake -B build -G Ninja \
           -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
           -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
       env:
         VCPKG_DEFAULT_TRIPLET: x64-linux
 
-    # ---------- 构建 ----------
     - name: Build
-      run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+      run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
 
-    # ---------- 打包运行文件 ----------
-    - name: Prepare runtime directory
+    - name: Install linuxdeployqt
       run: |
-        mkdir -p package/usr/bin
-        cp ${{ github.workspace }}/build/Application package/usr/bin/
-        cp ${{ github.workspace }}/style.qss package/usr/bin/ || true
+        wget -c "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
+        chmod a+x linuxdeployqt-continuous-x86_64.AppImage
+        ./linuxdeployqt-continuous-x86_64.AppImage --appimage-extract
+        sudo ln -s "$(pwd)/squashfs-root/AppRun" /usr/local/bin/linuxdeployqt
 
-    - name: Copy system libraries (simple approach)
+    - name: Bundle with linuxdeployqt
       run: |
-        mkdir -p package/usr/lib
-        ldd package/usr/bin/Application | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -v '{}' package/usr/lib/ || true
-        QT_PLUGIN_PATH="${VCPKG_ROOT}/installed/x64-linux/bin/plugins"
-        if [ -d "$QT_PLUGIN_PATH" ]; then
-          cp -r "$QT_PLUGIN_PATH" package/usr/bin/plugins
-        fi
+        mkdir -p AppDir/usr/bin
+        cp build/Application AppDir/usr/bin/
+        [ -f style.qss ] && cp style.qss AppDir/usr/bin/ || true
+        linuxdeployqt AppDir/usr/bin/Application -bundle-non-qt-libs -qmldir=.
+        find AppDir -name "*.a" -delete
+        find AppDir -name "*.prl" -delete
 
     - name: Create run script
       run: |
-        cat > package/run.sh << 'EOF'
+        cat > AppDir/run.sh << 'EOF'
         #!/bin/bash
         DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+        export QT_PLUGIN_PATH="$DIR/usr/bin/plugins"
         export LD_LIBRARY_PATH="$DIR/usr/lib:$LD_LIBRARY_PATH"
         exec "$DIR/usr/bin/Application" "$@"
         EOF
-        chmod +x package/run.sh
+        chmod +x AppDir/run.sh
 
     - name: Package into tar.gz
-      run: tar -czf Application-linux-x86_64.tar.gz -C package .
+      run: tar -czf Application-linux-x86_64.tar.gz -C AppDir .
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
