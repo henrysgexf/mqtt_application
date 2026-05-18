@@ -30,8 +30,8 @@ set(PROJECT_SOURCES
     play.cpp
     videowidget.h
     videowidget.cpp
-    radarwidget.h
-    radarwidget.cpp
+    # radarwidget.h
+    # radarwidget.cpp
     hevcnalparser.h
     hevcnalparser.cpp
 )

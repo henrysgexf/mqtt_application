@@ -96,7 +96,20 @@ jobs:
         EOF
         echo "vcpkg.json created:"
         cat vcpkg.json
+    
 
+
+    - name: Cache vcpkg packages
+      uses: actions/cache@v4
+      id: cache-vcpkg
+      with:
+        path: |
+          ${{ runner.workspace }}/vcpkg/downloads
+          ${{ runner.workspace }}/vcpkg/installed
+          ${{ runner.workspace }}/vcpkg/buildtrees   # 可选，但可能很大
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
     # ---------- 安装依赖（manifest 模式） ----------
     - name: Install dependencies via vcpkg (with retry)
       run: |
@@ -119,6 +132,15 @@ jobs:
         }
         retry vcpkg install --triplet x64-linux
 
+
+
+    - name: Cache CMake build
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/build
+        key: ${{ runner.os }}-cmake-${{ hashFiles('CMakeLists.txt', '**/*.cpp', '**/*.h') }}
+        restore-keys: |
+          ${{ runner.os }}-cmake-
     # ---------- 配置 CMake ----------
     - name: Configure CMake
       run: |
