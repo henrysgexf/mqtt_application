@@ -114,22 +114,50 @@ jobs:
         ./linuxdeployqt-continuous-x86_64.AppImage --appimage-extract
         sudo ln -s "$(pwd)/squashfs-root/AppRun" /usr/local/bin/linuxdeployqt
 
+    - name: Setup qmake PATH for linuxdeployqt
+      run: |
+        QMAKE_PATH="${{ runner.workspace }}/vcpkg/installed/x64-linux/tools/qt6/bin"
+        echo "${QMAKE_PATH}" >> $GITHUB_PATH
+
+    - name: Prepare desktop file for linuxdeployqt
+      run: |
+        cat > AppDir/application.desktop << 'EOF'
+        [Desktop Entry]
+        Name=MQTT Application
+        Exec=Application
+        Icon=application
+        Type=Application
+        Categories=Utility;
+        EOF
+        # 可选：创建一个空白图标避免警告
+        touch AppDir/application.png
+
     - name: Bundle with linuxdeployqt
       run: |
         mkdir -p AppDir/usr/bin
         cp build/Application AppDir/usr/bin/
         [ -f style.qss ] && cp style.qss AppDir/usr/bin/ || true
-        linuxdeployqt AppDir/usr/bin/Application -bundle-non-qt-libs -qmldir=.
-        find AppDir -name "*.a" -delete
-        find AppDir -name "*.prl" -delete
+
+        # 运行 linuxdeployqt 捆绑 Qt 依赖
+        linuxdeployqt AppDir/usr/bin/Application -bundle-non-qt-libs -always-overwrite
+
+        # 手动复制 FFmpeg 库（linuxdeployqt 不会自动处理）
+        mkdir -p AppDir/usr/lib
+        ldd build/Application | grep -E "libav(codec|format|util|swscale|swresample|filter|device)" | awk '{print $3}' | xargs -I {} cp -v {} AppDir/usr/lib/ || true
+
+        # 复制 Qt 平台插件（如果尚未被 linuxdeployqt 复制）
+        # linuxdeployqt 应该已经做了，但确保存在
+        if [ ! -d "AppDir/usr/bin/plugins" ]; then
+          cp -r "${{ runner.workspace }}/vcpkg/installed/x64-linux/bin/plugins" AppDir/usr/bin/ 2>/dev/null || true
+        fi
 
     - name: Create run script
       run: |
         cat > AppDir/run.sh << 'EOF'
         #!/bin/bash
         DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-        export QT_PLUGIN_PATH="$DIR/usr/bin/plugins"
         export LD_LIBRARY_PATH="$DIR/usr/lib:$LD_LIBRARY_PATH"
+        export QT_PLUGIN_PATH="$DIR/usr/bin/plugins"
         exec "$DIR/usr/bin/Application" "$@"
         EOF
         chmod +x AppDir/run.sh
