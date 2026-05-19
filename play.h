@@ -9,7 +9,7 @@
 #include <QImage>
 #include <QTimer>
 #include "videowidget.h"
-#include "radarwidget.h"
+//#include "radarwidget.h"
 #include "robomaster_protocol.pb.h"
 #include <QMqttMessage>
 #include <QLabel>

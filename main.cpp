@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     QFile file(qssPath);
     if (file.open(QFile::ReadOnly)) {
         QTextStream stream(&file);
-        app.setStyleSheet(stream.readAll());
+        a.setStyleSheet(stream.readAll());
         file.close();
     } else {
         qWarning() << "Failed to load QSS from" << qssPath;
