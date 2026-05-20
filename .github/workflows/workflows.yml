@@ -121,6 +121,7 @@ jobs:
 
     - name: Prepare desktop file for linuxdeployqt
       run: |
+        mkdir -p AppDir
         cat > AppDir/application.desktop << 'EOF'
         [Desktop Entry]
         Name=MQTT Application
@@ -129,7 +130,6 @@ jobs:
         Type=Application
         Categories=Utility;
         EOF
-        # 可选：创建一个空白图标避免警告
         touch AppDir/application.png
 
     - name: Bundle with linuxdeployqt
