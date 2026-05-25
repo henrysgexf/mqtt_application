@@ -36,20 +36,32 @@ void VideoOpenGLWidget::setFrame(const QImage &img)
     update(); // 触发 repaint
 }
 
+// void VideoOpenGLWidget::paintGL()
+// {
+//     QPainter painter(this);
+
+//     painter.fillRect(rect(), Qt::black);
+
+//     mutex.lock();
+//     if (!currentFrame.isNull()) {
+//         QImage scaled = currentFrame.scaled(size(), Qt::KeepAspectRatio);
+//         int x = (width() - scaled.width()) / 2;
+//         int y = (height() - scaled.height()) / 2;
+//         painter.drawImage(QPoint(x, y), scaled);
+//     }
+//     mutex.unlock();
+// }
+
 void VideoOpenGLWidget::paintGL()
 {
     QPainter painter(this);
-
     painter.fillRect(rect(), Qt::black);
-
     mutex.lock();
     if (!currentFrame.isNull()) {
-        QImage scaled = currentFrame.scaled(size(), Qt::KeepAspectRatio);
-        int x = (width() - scaled.width()) / 2;
-        int y = (height() - scaled.height()) / 2;
-        painter.drawImage(QPoint(x, y), scaled);
+        // 改为拉伸填充，忽略原始宽高比
+        QImage scaled = currentFrame.scaled(size(), Qt::IgnoreAspectRatio);
+        painter.drawImage(rect(), scaled); // 直接绘制到整个区域
     }
     mutex.unlock();
 }
-
 

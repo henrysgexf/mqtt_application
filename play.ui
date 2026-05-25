@@ -12,7 +12,14 @@
   </property>
   <layout class="QGridLayout" name="mainLayout">
    <item row="0" column="0">
-    <widget class="VideoOpenGLWidget" name="VideoWidget"/>
+    <widget class="VideoOpenGLWidget" name="VideoWidget">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+    </widget>
    </item>
   </layout>
   <widget class="QFrame" name="topBar">
@@ -24,6 +31,12 @@
      <height>60</height>
     </rect>
    </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <property name="styleSheet">
     <string>
      background-color: rgba(0,0,0,160);
@@ -33,6 +46,12 @@
    <layout class="QHBoxLayout">
     <item>
      <widget class="QLabel" name="videoSourceLabel">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="text">
        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:16pt; color:#ffffff;&quot;&gt;图传：官方&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
@@ -40,6 +59,12 @@
     </item>
     <item>
      <widget class="QLabel" name="connectStateLabel">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string notr="true">color: rgb(255, 255, 255);</string>
       </property>
@@ -50,6 +75,12 @@
     </item>
     <item>
      <widget class="QLabel" name="gameStatus">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string>color:white;font-size:16px;</string>
       </property>
@@ -60,6 +91,12 @@
     </item>
     <item>
      <widget class="QLabel" name="gameTime">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string>color:cyan;font-size:18px;</string>
       </property>
@@ -70,6 +107,12 @@
     </item>
     <item>
      <widget class="QLabel" name="allyBaseHP">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string notr="true">
 color: rgb(41, 87, 255);</string>
@@ -81,6 +124,12 @@ color: rgb(41, 87, 255);</string>
     </item>
     <item>
      <widget class="QLabel" name="enemyBaseHP">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string>color:red;</string>
       </property>
@@ -96,9 +145,15 @@ color: rgb(41, 87, 255);</string>
     <rect>
      <x>10</x>
      <y>100</y>
-     <width>220</width>
-     <height>150</height>
+     <width>191</width>
+     <height>141</height>
     </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
    </property>
    <property name="styleSheet">
     <string>
@@ -109,6 +164,12 @@ color: rgb(41, 87, 255);</string>
    <layout class="QVBoxLayout">
     <item>
      <widget class="QLabel" name="robotHealthLabel">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string>color:red;</string>
       </property>
@@ -119,6 +180,12 @@ color: rgb(41, 87, 255);</string>
     </item>
     <item>
      <widget class="QLabel" name="buffLabel">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string>color:cyan;</string>
       </property>
@@ -129,6 +196,12 @@ color: rgb(41, 87, 255);</string>
     </item>
     <item>
      <widget class="QLabel" name="rfidStatus">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string>color:yellow;</string>
       </property>
@@ -142,11 +215,17 @@ color: rgb(41, 87, 255);</string>
   <widget class="QFrame" name="shootPanel">
    <property name="geometry">
     <rect>
-     <x>1170</x>
-     <y>100</y>
-     <width>220</width>
-     <height>150</height>
+     <x>10</x>
+     <y>250</y>
+     <width>221</width>
+     <height>151</height>
     </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
    </property>
    <property name="styleSheet">
     <string>
@@ -157,6 +236,12 @@ color: rgb(41, 87, 255);</string>
    <layout class="QVBoxLayout">
     <item>
      <widget class="QLabel" name="robotHeatLabel">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string notr="true">color: rgb(255, 255, 255);</string>
       </property>
@@ -167,6 +252,12 @@ color: rgb(41, 87, 255);</string>
     </item>
     <item>
      <widget class="QLabel" name="robotRemainingAmmoLabel">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string notr="true">color: rgb(255, 255, 255);</string>
       </property>
@@ -177,6 +268,12 @@ color: rgb(41, 87, 255);</string>
     </item>
     <item>
      <widget class="QLabel" name="cooling">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string notr="true">color: rgb(255, 255, 255);</string>
       </property>
@@ -187,6 +284,12 @@ color: rgb(41, 87, 255);</string>
     </item>
     <item>
      <widget class="QLabel" name="airSupportStatusLabel">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="styleSheet">
        <string notr="true">color: rgb(255, 255, 255);</string>
       </property>
@@ -200,11 +303,17 @@ color: rgb(41, 87, 255);</string>
   <widget class="QLabel" name="hint">
    <property name="geometry">
     <rect>
-     <x>550</x>
-     <y>820</y>
+     <x>670</x>
+     <y>980</y>
      <width>300</width>
      <height>40</height>
     </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
    </property>
    <property name="styleSheet">
     <string>
@@ -215,14 +324,14 @@ color: rgb(41, 87, 255);</string>
     </string>
    </property>
    <property name="text">
-    <string>按 P 连接图传</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;按 F12 切换图传&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </widget>
   <zorder>VideoWidget</zorder>
-  <zorder>hint</zorder>
-  <zorder>topBar</zorder>
-  <zorder>robotPanel</zorder>
   <zorder>shootPanel</zorder>
+  <zorder>robotPanel</zorder>
+  <zorder>topBar</zorder>
+  <zorder>hint</zorder>
  </widget>
  <customwidgets>
   <customwidget>
