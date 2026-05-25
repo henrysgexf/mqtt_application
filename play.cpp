@@ -149,7 +149,7 @@ void Play::setupMqtt()
     qDebug() << "MQTT setup";
     ui->gameStatus->setText("MQTT Connected");
 
-    lockMouse();
+    //lockMouse();
 
     subGameStatus = mqttClient->subscribe(QMqttTopicFilter("GameStatus"));
     subGlobalStatus = mqttClient->subscribe(QMqttTopicFilter("GlobalUnitStatus"));
@@ -202,6 +202,23 @@ void Play::onMqttMessageReceived(const QMqttMessage &msg)
         processCustomByteBlock(payload);
 }
 
+// void Play::lockMouse()
+// {
+//     if (mouseLocked) return;
+//     mouseLocked = true;
+//     setFocus();
+//     activateWindow();
+//     raise();
+//     setFocusPolicy(Qt::StrongFocus);
+//     setMouseTracking(true);
+//     lockCenter = mapToGlobal(rect().center());
+//     QCursor::setPos(lockCenter.toPoint());
+//     setCursor(Qt::BlankCursor);
+// }
+#include <QBitmap>
+#include <QImage>
+#include <QCursor>
+
 void Play::lockMouse()
 {
     if (mouseLocked) return;
@@ -209,18 +226,28 @@ void Play::lockMouse()
     setFocus();
     activateWindow();
     raise();
-    setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
     lockCenter = mapToGlobal(rect().center());
     QCursor::setPos(lockCenter.toPoint());
-    setCursor(Qt::BlankCursor);
+
+    // 使用 1x1 透明像素创建真正透明的光标
+    QPixmap transparentPixmap(1, 1);
+    transparentPixmap.fill(Qt::transparent);
+    QCursor transparentCursor(transparentPixmap);
+    setCursor(transparentCursor);
 }
 
+// void Play::unlockMouse()
+// {
+//     if (!mouseLocked) return;
+//     mouseLocked = false;
+//     setCursor(Qt::ArrowCursor);
+// }
 void Play::unlockMouse()
 {
     if (!mouseLocked) return;
     mouseLocked = false;
-    setCursor(Qt::ArrowCursor);
+    setCursor(Qt::ArrowCursor);  // 恢复系统箭头光标
 }
 
 void Play::keyPressEvent(QKeyEvent *event)
